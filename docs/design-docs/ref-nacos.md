@@ -1,8 +1,20 @@
 # Nacos 源码参考索引
 
-> 本地路径: `nacos/`（符号链接至 `/Users/xujingfeng/AIProjects/nacos/`）
+> 本地路径: `reference-projects/nacos/`
 > 版本: 3.2.1-SNAPSHOT | Java 17（服务端）/ Java 8+（客户端）
 > 用途: HiMarket 开发时的 Nacos 源码参考，不提交到 git
+
+Nacos 是阿里巴巴开源的服务发现与配置管理平台，3.x 版本新增 AI 注册表能力（Skill/Agent/MCP/Pipeline）。HiMarket 通过 `nacos-maintainer-client` 模块与 Nacos 交互，管理 Skill、Worker、MCP 服务器和命名空间。
+
+## 参考价值
+
+以下场景建议打开本索引查阅 Nacos 源码：
+
+1. **maintainer-client API 行为理解**：当 `SkillMaintainerService` 等接口行为不明确时，追溯到 `ai/service/` 查看服务端完整实现
+2. **API 模型字段语义**：`api/ai/model/` 下的 Skill、AgentCard、McpServerBasicInfo 等模型类定义了客户端与服务端共享的数据结构
+3. **错误码与异常处理**：Nacos 异常（`NacosException`）的错误码定义在 `api/exception/` 中，HiMarket 在 Service 层统一转换为 `BusinessException`
+4. **Console REST API 参考**：`console/controller/v3/` 的 API 设计（路径风格、认证注解、响应格式）可作为参考
+5. **AI 注册表架构**：`ai/` 模块展示了 Skill/Agent/MCP/Pipeline 的统一管理模式
 
 ## 架构总览
 

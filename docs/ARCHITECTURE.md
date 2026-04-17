@@ -112,6 +112,25 @@ sequenceDiagram
 
 ## 核心业务域
 
+### 业务模块速查
+
+| 业务域 | Controller | Service | Entity |
+|--------|-----------|---------|--------|
+| 管理员 | `AdministratorController` `/admins` | `AdministratorService` | `Administrator` |
+| 开发者 | `DeveloperController` `/developers` | `DeveloperService` | `Developer` |
+| 产品 | `ProductController` `/products` | `ProductService` | `Product`, `ProductPublication` |
+| 消费者 | `ConsumerController` `/consumers` | `ConsumerService` | `Consumer`, `ConsumerCredential` |
+| 门户 | `PortalController` `/portals` | `PortalService` | `Portal`, `PortalDomain` |
+| 网关 | `GatewayController` `/gateways` | `GatewayService` | `Gateway` |
+| Nacos | `NacosController` `/nacos` | `NacosService` | `NacosInstance` |
+| AI 对话 | `ChatController` `/chats` (SSE) | `service/hichat/` | `Chat`, `ChatSession` |
+| 云 IDE | `CodingSessionController` | `service/hicoding/` | `CodingSession` |
+
+### WebSocket 端点
+
+- `/ws/acp` — HiCoding 编程助手（`HiCodingWebSocketHandler`）
+- `/ws/terminal` — 远程终端（`TerminalWebSocketHandler`）
+
 ### 产品管理
 
 产品（Product）是平台的核心概念，代表一个可订阅的 API 服务。
