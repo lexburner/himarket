@@ -9,11 +9,11 @@
  *   stdio / sse / http
  */
 export const McpProtocol = {
-  STDIO: 'stdio',
-  SSE: 'sse',
-  STREAMABLE_HTTP: 'streamableHttp',
   /** 前端表单简写，对应后端 streamableHttp */
   HTTP: 'http',
+  SSE: 'sse',
+  STDIO: 'stdio',
+  STREAMABLE_HTTP: 'streamableHttp',
 } as const;
 
 export type McpProtocolValue = (typeof McpProtocol)[keyof typeof McpProtocol];

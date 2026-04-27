@@ -1,16 +1,3 @@
-import { useState, useEffect } from 'react'
-import {
-  Form,
-  Input,
-  Button,
-  Switch,
-  Table,
-  Tag,
-  Space,
-  Modal,
-  Select,
-  message,
-} from 'antd'
 import {
   CodeOutlined,
   ApiOutlined,
@@ -19,133 +6,157 @@ import {
   PlusOutlined,
   DeleteOutlined,
   EditOutlined,
-} from '@ant-design/icons'
-import type { ExtraParam, ProtocolType } from '../types'
+} from '@ant-design/icons';
+import { Form, Input, Button, Switch, Table, Tag, Space, Modal, Select, message } from 'antd';
+import { useState, useEffect } from 'react';
+
+import type { ExtraParam, ProtocolType } from '../types';
 
 const PROTOCOLS: { key: ProtocolType; label: string; icon: React.ReactNode }[] = [
-  { key: 'sse', label: 'SSE', icon: <ApiOutlined /> },
-  { key: 'http', label: 'Streamable HTTP', icon: <GlobalOutlined /> },
-  { key: 'stdio', label: 'Stdio', icon: <CodeOutlined /> },
-]
+  { icon: <ApiOutlined />, key: 'sse', label: 'SSE' },
+  { icon: <GlobalOutlined />, key: 'http', label: 'Streamable HTTP' },
+  { icon: <CodeOutlined />, key: 'stdio', label: 'Stdio' },
+];
 
 export default function McpConfigStep() {
-  const form = Form.useFormInstance()
+  const form = Form.useFormInstance();
 
-  const protocolType: ProtocolType = Form.useWatch('protocolType', form) ?? 'sse'
-  const isStdio = protocolType === 'stdio'
+  const protocolType: ProtocolType = Form.useWatch('protocolType', form) ?? 'sse';
+  const isStdio = protocolType === 'stdio';
 
   // ---- Extra params local state ----
-  const [extraParams, setExtraParams] = useState<ExtraParam[]>([])
-  const [paramModalVisible, setParamModalVisible] = useState(false)
-  const [paramForm] = Form.useForm()
-  const [editingParamKey, setEditingParamKey] = useState<string | null>(null)
+  const [extraParams, setExtraParams] = useState<ExtraParam[]>([]);
+  const [paramModalVisible, setParamModalVisible] = useState(false);
+  const [paramForm] = Form.useForm();
+  const [editingParamKey, setEditingParamKey] = useState<string | null>(null);
 
   // Sync extraParams to form field whenever it changes
   useEffect(() => {
-    form.setFieldsValue({ extraParams })
-  }, [extraParams, form])
+    form.setFieldsValue({ extraParams });
+  }, [extraParams, form]);
 
   // ---- Protocol selection handler ----
   const handleProtocolChange = (key: ProtocolType) => {
     form.setFieldsValue({
       protocolType: key,
       ...(key === 'stdio' ? { sandboxRequired: true } : {}),
-    })
-    setExtraParams([])
-  }
+    });
+    setExtraParams([]);
+  };
 
   // ---- Parse JSON handler ----
   const handleParseJson = () => {
-    const raw = form.getFieldValue('connectionConfig')
+    const raw = form.getFieldValue('connectionConfig');
     if (!raw) {
-      message.warning('请先粘贴 JSON 配置')
-      return
+      message.warning('请先粘贴 JSON 配置');
+      return;
     }
     try {
-      const parsed = JSON.parse(raw)
-      const servers = parsed.mcpServers || parsed
-      const serverKey = Object.keys(servers)[0]
+      const parsed = JSON.parse(raw);
+      const servers = parsed.mcpServers || parsed;
+      const serverKey = Object.keys(servers)[0];
       if (!serverKey) {
-        message.error('未找到有效的 MCP Server 配置')
-        return
+        message.error('未找到有效的 MCP Server 配置');
+        return;
       }
-      const cfg = servers[serverKey]
+      const cfg = servers[serverKey];
 
       // Auto-detect protocol type
       if (cfg.command) {
-        form.setFieldsValue({ protocolType: 'stdio', sandboxRequired: true })
+        form.setFieldsValue({ protocolType: 'stdio', sandboxRequired: true });
       } else if (cfg.type === 'sse' || (!cfg.type && cfg.url?.endsWith('/sse'))) {
-        form.setFieldsValue({ protocolType: 'sse' })
+        form.setFieldsValue({ protocolType: 'sse' });
       } else if (cfg.type === 'streamable-http') {
-        form.setFieldsValue({ protocolType: 'http' })
+        form.setFieldsValue({ protocolType: 'http' });
       } else {
-        form.setFieldsValue({ protocolType: cfg.url ? 'sse' : 'http' })
+        form.setFieldsValue({ protocolType: cfg.url ? 'sse' : 'http' });
       }
 
       // Extract extra params
-      const params: ExtraParam[] = []
+      const params: ExtraParam[] = [];
       if (cfg.env && typeof cfg.env === 'object') {
         Object.entries(cfg.env).forEach(([k, v]) => {
-          params.push({ key: `param_${Date.now()}_${k}`, name: k, position: 'env', required: true, description: '', example: String(v) })
-        })
+          params.push({
+            description: '',
+            example: String(v),
+            key: `param_${Date.now()}_${k}`,
+            name: k,
+            position: 'env',
+            required: true,
+          });
+        });
       }
       if (cfg.headers && typeof cfg.headers === 'object') {
         Object.entries(cfg.headers).forEach(([k, v]) => {
-          params.push({ key: `param_${Date.now()}_${k}`, name: k, position: 'header', required: true, description: '', example: String(v) })
-        })
+          params.push({
+            description: '',
+            example: String(v),
+            key: `param_${Date.now()}_${k}`,
+            name: k,
+            position: 'header',
+            required: true,
+          });
+        });
       }
       if (cfg.args && Array.isArray(cfg.args)) {
         cfg.args.forEach((arg: string, i: number) => {
           if (typeof arg === 'string' && arg.startsWith('--')) {
-            params.push({ key: `param_${Date.now()}_arg${i}`, name: arg, position: 'args', required: false, description: '', example: '' })
+            params.push({
+              description: '',
+              example: '',
+              key: `param_${Date.now()}_arg${i}`,
+              name: arg,
+              position: 'args',
+              required: false,
+            });
           }
-        })
+        });
       }
 
-      setExtraParams(params)
-      message.success(`已解析：${serverKey}，识别到 ${params.length} 个参数`)
+      setExtraParams(params);
+      message.success(`已解析：${serverKey}，识别到 ${params.length} 个参数`);
     } catch {
-      message.error('JSON 解析失败，请检查格式')
+      message.error('JSON 解析失败，请检查格式');
     }
-  }
+  };
 
   // ---- Param modal handlers ----
   const openAddParam = () => {
-    setEditingParamKey(null)
-    paramForm.resetFields()
-    setParamModalVisible(true)
-  }
+    setEditingParamKey(null);
+    paramForm.resetFields();
+    setParamModalVisible(true);
+  };
 
   const openEditParam = (record: ExtraParam) => {
-    setEditingParamKey(record.key)
-    paramForm.setFieldsValue(record)
-    setParamModalVisible(true)
-  }
+    setEditingParamKey(record.key);
+    paramForm.setFieldsValue(record);
+    setParamModalVisible(true);
+  };
 
   const handleParamOk = () => {
     paramForm.validateFields().then((values) => {
       if (editingParamKey) {
         setExtraParams((prev) =>
           prev.map((p) => (p.key === editingParamKey ? { ...values, key: editingParamKey } : p)),
-        )
+        );
       } else {
-        setExtraParams((prev) => [...prev, { ...values, key: `param_${Date.now()}` }])
+        setExtraParams((prev) => [...prev, { ...values, key: `param_${Date.now()}` }]);
       }
-      setParamModalVisible(false)
-      paramForm.resetFields()
-      setEditingParamKey(null)
-    })
-  }
+      setParamModalVisible(false);
+      paramForm.resetFields();
+      setEditingParamKey(null);
+    });
+  };
 
   const handleParamCancel = () => {
-    setParamModalVisible(false)
-    paramForm.resetFields()
-    setEditingParamKey(null)
-  }
+    setParamModalVisible(false);
+    paramForm.resetFields();
+    setEditingParamKey(null);
+  };
 
   const handleDeleteParam = (key: string) => {
-    setExtraParams((prev) => prev.filter((p) => p.key !== key))
-  }
+    setExtraParams((prev) => prev.filter((p) => p.key !== key));
+  };
 
   // ---- Example JSON placeholder ----
   const exampleJson = isStdio
@@ -172,83 +183,98 @@ export default function McpConfigStep() {
       "url": "https://mcp.example.com/mcp"
     }
   }
-}`
+}`;
 
   // ---- Table columns ----
   const columns = [
     {
-      title: '参数名',
       dataIndex: 'name',
-      width: 120,
       render: (v: string) => <span className="font-mono text-xs">{v}</span>,
+      title: '参数名',
+      width: 120,
     },
     {
-      title: '位置',
       dataIndex: 'position',
-      width: 80,
       render: (v: string) => (
         <Tag className="m-0 border-0 bg-gray-100 text-gray-600 text-xs">{v}</Tag>
       ),
+      title: '位置',
+      width: 80,
     },
     {
-      title: '必填',
-      dataIndex: 'required',
-      width: 50,
       align: 'center' as const,
+      dataIndex: 'required',
       render: (v: boolean) =>
         v ? (
-          <Tag color="red" className="m-0 border-0 text-xs">是</Tag>
+          <Tag className="m-0 border-0 text-xs" color="red">
+            是
+          </Tag>
         ) : (
           <span className="text-xs text-gray-400">否</span>
         ),
+      title: '必填',
+      width: 50,
     },
     {
-      title: '说明',
       dataIndex: 'description',
       ellipsis: true,
       render: (v: string) => <span className="text-xs text-gray-500">{v || '-'}</span>,
+      title: '说明',
     },
     {
-      title: '',
-      width: 60,
       align: 'center' as const,
       render: (_: unknown, record: ExtraParam) => (
         <Space size={4}>
           <Button
-            type="text"
-            size="small"
-            icon={<EditOutlined />}
             className="text-gray-400 hover:text-blue-500"
+            icon={<EditOutlined />}
             onClick={() => openEditParam(record)}
+            size="small"
+            type="text"
           />
           <Button
-            type="text"
-            size="small"
-            icon={<DeleteOutlined />}
             className="text-gray-400 hover:text-red-500"
+            icon={<DeleteOutlined />}
             onClick={() => handleDeleteParam(record.key)}
+            size="small"
+            type="text"
           />
         </Space>
       ),
+      title: '',
+      width: 60,
     },
-  ]
+  ];
 
   return (
     <div className="space-y-5">
       {/* ---- 协议类型选择卡片 ---- */}
-      <Form.Item name="protocolType" label="协议类型" initialValue="sse" rules={[{ required: true }]}>
+      <Form.Item
+        initialValue="sse"
+        label="协议类型"
+        name="protocolType"
+        rules={[{ required: true }]}
+      >
         <div className="grid grid-cols-3 gap-2">
           {PROTOCOLS.map((p) => {
-            const selected = protocolType === p.key
+            const selected = protocolType === p.key;
             return (
               <div
-                key={p.key}
-                onClick={() => handleProtocolChange(p.key)}
                 className={`relative flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-all duration-150 ${
                   selected
                     ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500/20'
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'
                 }`}
+                key={p.key}
+                onClick={() => handleProtocolChange(p.key)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleProtocolChange(p.key);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 {selected && (
                   <CheckCircleFilled className="absolute top-1.5 right-1.5 text-blue-500 text-[10px]" />
@@ -256,44 +282,46 @@ export default function McpConfigStep() {
                 <span className={`text-sm ${selected ? 'text-blue-500' : 'text-gray-400'}`}>
                   {p.icon}
                 </span>
-                <span className={`text-xs font-medium ${selected ? 'text-blue-700' : 'text-gray-600'}`}>
+                <span
+                  className={`text-xs font-medium ${selected ? 'text-blue-700' : 'text-gray-600'}`}
+                >
                   {p.label}
                 </span>
               </div>
-            )
+            );
           })}
         </div>
       </Form.Item>
 
       {/* ---- MCP 连接配置 JSON ---- */}
       <Form.Item
-        name="connectionConfig"
         label="MCP 连接配置"
+        name="connectionConfig"
         rules={[
-          { required: true, message: '请输入 MCP 配置' },
+          { message: '请输入 MCP 配置', required: true },
           {
             validator: (_, value) => {
-              if (!value) return Promise.resolve()
+              if (!value) return Promise.resolve();
               try {
-                JSON.parse(value)
-                return Promise.resolve()
+                JSON.parse(value);
+                return Promise.resolve();
               } catch {
-                return Promise.reject('请输入合法的 JSON 格式')
+                return Promise.reject('请输入合法的 JSON 格式');
               }
             },
           },
         ]}
       >
         <Input.TextArea
-          placeholder={exampleJson}
-          autoSize={{ minRows: 8, maxRows: 14 }}
+          autoSize={{ maxRows: 14, minRows: 8 }}
           className="font-mono text-xs"
+          placeholder={exampleJson}
         />
       </Form.Item>
 
       {/* ---- 解析 JSON 按钮 ---- */}
       <div className="flex items-center gap-3 -mt-3">
-        <Button size="small" type="primary" ghost icon={<CodeOutlined />} onClick={handleParseJson}>
+        <Button ghost icon={<CodeOutlined />} onClick={handleParseJson} size="small" type="primary">
           解析 JSON
         </Button>
         <span className="text-xs text-gray-400">粘贴 JSON 后点击可自动解析协议类型及参数</span>
@@ -302,20 +330,18 @@ export default function McpConfigStep() {
       {/* ---- 额外参数配置表格 ---- */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-700">
-            {isStdio ? '环境变量配置' : '请求参数配置'}
-          </span>
+          <span className="text-sm text-gray-700">{isStdio ? '环境变量配置' : '请求参数配置'}</span>
           <Space size={8}>
-            <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={openAddParam}>
+            <Button icon={<PlusOutlined />} onClick={openAddParam} size="small" type="dashed">
               添加{isStdio ? '变量' : '参数'}
             </Button>
             {extraParams.length > 0 && (
               <Button
-                size="small"
-                type="text"
                 danger
                 icon={<DeleteOutlined />}
                 onClick={() => setExtraParams([])}
+                size="small"
+                type="text"
               >
                 清除所有
               </Button>
@@ -325,12 +351,12 @@ export default function McpConfigStep() {
 
         {extraParams.length > 0 ? (
           <Table
-            dataSource={extraParams}
-            rowKey="key"
-            size="small"
-            pagination={false}
             className="border border-gray-100 rounded-lg overflow-hidden"
             columns={columns}
+            dataSource={extraParams}
+            pagination={false}
+            rowKey="key"
+            size="small"
           />
         ) : (
           <div className="border border-dashed border-gray-200 rounded-lg py-6 text-center text-xs text-gray-400">
@@ -347,40 +373,40 @@ export default function McpConfigStep() {
             {isStdio ? 'Stdio 协议必须通过沙箱运行' : '开启后可将 MCP Server 部署到沙箱集群'}
           </div>
         </div>
-        <Form.Item name="sandboxRequired" valuePropName="checked" className="mb-0">
-          <Switch checkedChildren="开启" unCheckedChildren="关闭" disabled={isStdio} />
+        <Form.Item className="mb-0" name="sandboxRequired" valuePropName="checked">
+          <Switch checkedChildren="开启" disabled={isStdio} unCheckedChildren="关闭" />
         </Form.Item>
       </div>
 
       {/* Hidden field to keep extraParams in form */}
-      <Form.Item name="extraParams" hidden>
+      <Form.Item hidden name="extraParams">
         <Input />
       </Form.Item>
 
       {/* ---- 添加/编辑参数弹窗 ---- */}
       <Modal
-        title={editingParamKey ? '编辑参数' : '添加参数'}
-        open={paramModalVisible}
+        cancelText="取消"
+        destroyOnClose
+        okText="确定"
         onCancel={handleParamCancel}
         onOk={handleParamOk}
-        okText="确定"
-        cancelText="取消"
+        open={paramModalVisible}
+        title={editingParamKey ? '编辑参数' : '添加参数'}
         width={480}
-        destroyOnClose
       >
-        <Form form={paramForm} layout="vertical" className="mt-4">
+        <Form className="mt-4" form={paramForm} layout="vertical">
           <Form.Item
-            name="name"
             label="参数名"
-            rules={[{ required: true, message: '请输入参数名' }]}
+            name="name"
+            rules={[{ message: '请输入参数名', required: true }]}
           >
             <Input placeholder={isStdio ? '例如: API_KEY' : '例如: Authorization'} />
           </Form.Item>
           <Form.Item
-            name="position"
-            label="参数位置"
             initialValue={isStdio ? 'env' : 'header'}
-            rules={[{ required: true, message: '请选择参数位置' }]}
+            label="参数位置"
+            name="position"
+            rules={[{ message: '请选择参数位置', required: true }]}
           >
             <Select>
               <Select.Option value="env">环境变量 (env)</Select.Option>
@@ -388,17 +414,21 @@ export default function McpConfigStep() {
               <Select.Option value="header">请求头 (header)</Select.Option>
             </Select>
           </Form.Item>
-          <Form.Item name="required" label="是否必填" valuePropName="checked" initialValue={false}>
+          <Form.Item initialValue={false} label="是否必填" name="required" valuePropName="checked">
             <Switch checkedChildren="必填" unCheckedChildren="可选" />
           </Form.Item>
-          <Form.Item name="description" label="参数说明">
-            <Input.TextArea placeholder="描述该参数的用途" rows={2} autoSize={{ minRows: 2, maxRows: 4 }} />
+          <Form.Item label="参数说明" name="description">
+            <Input.TextArea
+              autoSize={{ maxRows: 4, minRows: 2 }}
+              placeholder="描述该参数的用途"
+              rows={2}
+            />
           </Form.Item>
-          <Form.Item name="example" label="参数示例">
+          <Form.Item label="参数示例" name="example">
             <Input placeholder={isStdio ? '例如: sk-xxxxxxxxxxxx' : '例如: Bearer sk-xxx'} />
           </Form.Item>
         </Form>
       </Modal>
     </div>
-  )
+  );
 }

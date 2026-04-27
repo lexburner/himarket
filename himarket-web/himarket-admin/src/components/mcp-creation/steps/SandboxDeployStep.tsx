@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react'
-import { Form, Select, Radio, Input, Tag, message } from 'antd'
-import { sandboxApi } from '@/lib/api'
-import type { ExtraParam } from '../types'
+import { Form, Select, Radio, Input, Tag, message } from 'antd';
+import { useState, useEffect } from 'react';
+
+import { sandboxApi } from '@/lib/api';
+
+import type { ExtraParam } from '../types';
+
+interface SandboxItem {
+  sandboxId: string;
+  sandboxName: string;
+}
 
 /**
  * SandboxDeployStep — 沙箱部署配置步骤。
@@ -10,54 +17,54 @@ import type { ExtraParam } from '../types'
  * 渲染在父级 Form 内部，使用 Form.useFormInstance() 获取表单实例。
  */
 export default function SandboxDeployStep() {
-  const form = Form.useFormInstance()
+  const form = Form.useFormInstance();
 
   // ── 沙箱实例列表 ──
-  const [sandboxList, setSandboxList] = useState<any[]>([])
-  const [sandboxLoading, setSandboxLoading] = useState(false)
+  const [sandboxList, setSandboxList] = useState<SandboxItem[]>([]);
+  const [sandboxLoading, setSandboxLoading] = useState(false);
 
   // ── Namespace 列表 ──
-  const [namespaceList, setNamespaceList] = useState<string[]>([])
-  const [namespaceLoading, setNamespaceLoading] = useState(false)
+  const [namespaceList, setNamespaceList] = useState<string[]>([]);
+  const [namespaceLoading, setNamespaceLoading] = useState(false);
 
   // ── 资源规格预设 ──
-  const resourcePreset = Form.useWatch('resourcePreset', form)
+  const resourcePreset = Form.useWatch('resourcePreset', form);
 
   // ── 额外参数（从 McpConfigStep 读取） ──
-  const extraParams: ExtraParam[] = Form.useWatch('extraParams', form) || []
+  const extraParams: ExtraParam[] = Form.useWatch('extraParams', form) || [];
 
   // 加载沙箱实例列表
   useEffect(() => {
-    setSandboxLoading(true)
+    setSandboxLoading(true);
     sandboxApi
       .getActiveSandboxes()
-      .then((res: any) => {
-        const list = res?.data || []
-        setSandboxList(Array.isArray(list) ? list : [])
+      .then((res: unknown) => {
+        const list = (res as Record<string, unknown>).data ?? [];
+        setSandboxList(Array.isArray(list) ? (list as SandboxItem[]) : []);
       })
       .catch(() => {
-        message.error('获取沙箱实例列表失败')
-        setSandboxList([])
+        message.error('获取沙箱实例列表失败');
+        setSandboxList([]);
       })
-      .finally(() => setSandboxLoading(false))
-  }, [])
+      .finally(() => setSandboxLoading(false));
+  }, []);
 
   // 选择沙箱后加载 Namespace
   const handleSandboxChange = async (sandboxId: string) => {
-    setNamespaceList([])
-    form.setFieldsValue({ namespace: undefined })
-    setNamespaceLoading(true)
+    setNamespaceList([]);
+    form.setFieldsValue({ namespace: undefined });
+    setNamespaceLoading(true);
     try {
-      const res: any = await sandboxApi.listNamespaces(sandboxId)
-      const list = res?.data || res || []
-      setNamespaceList(Array.isArray(list) ? list : [])
+      const res: unknown = await sandboxApi.listNamespaces(sandboxId);
+      const list = (res as Record<string, unknown>).data ?? (Array.isArray(res) ? res : []);
+      setNamespaceList(Array.isArray(list) ? (list as string[]) : []);
     } catch {
-      message.error('获取 Namespace 列表失败')
-      setNamespaceList([])
+      message.error('获取 Namespace 列表失败');
+      setNamespaceList([]);
     } finally {
-      setNamespaceLoading(false)
+      setNamespaceLoading(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -68,51 +75,51 @@ export default function SandboxDeployStep() {
         </div>
         <div className="p-4 space-y-3">
           <Form.Item
-            name="sandboxId"
-            label="沙箱实例"
             className="mb-0"
-            rules={[{ required: true, message: '请选择沙箱实例' }]}
+            label="沙箱实例"
+            name="sandboxId"
+            rules={[{ message: '请选择沙箱实例', required: true }]}
           >
             <Select
-              placeholder="选择沙箱实例"
               loading={sandboxLoading}
               onChange={handleSandboxChange}
-              options={sandboxList.map((s: any) => ({
-                value: s.sandboxId,
+              options={sandboxList.map((s) => ({
                 label: s.sandboxName,
+                value: s.sandboxId,
               }))}
+              placeholder="选择沙箱实例"
             />
           </Form.Item>
 
           <Form.Item
-            name="namespace"
-            label="Namespace"
             className="mb-0"
-            rules={[{ required: true, message: '请选择 Namespace' }]}
             extra={
               !form.getFieldValue('sandboxId') ? (
                 <span className="text-[10px] text-gray-400">请先选择沙箱实例</span>
               ) : undefined
             }
+            label="Namespace"
+            name="namespace"
+            rules={[{ message: '请选择 Namespace', required: true }]}
           >
             <Select
-              placeholder={namespaceLoading ? '加载中...' : '选择 Namespace'}
-              loading={namespaceLoading}
               disabled={!form.getFieldValue('sandboxId')}
+              loading={namespaceLoading}
+              options={namespaceList.map((ns) => ({ label: ns, value: ns }))}
+              placeholder={namespaceLoading ? '加载中...' : '选择 Namespace'}
               showSearch
-              options={namespaceList.map((ns) => ({ value: ns, label: ns }))}
             />
           </Form.Item>
 
-          <Form.Item name="transportType" label="传输协议" initialValue="sse" className="mb-0">
-            <Radio.Group size="small" optionType="button" buttonStyle="solid">
+          <Form.Item className="mb-0" initialValue="sse" label="传输协议" name="transportType">
+            <Radio.Group buttonStyle="solid" optionType="button" size="small">
               <Radio.Button value="sse">SSE</Radio.Button>
               <Radio.Button value="http">Streamable HTTP</Radio.Button>
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item name="authType" label="鉴权方式" initialValue="none" className="mb-0">
-            <Radio.Group size="small" optionType="button" buttonStyle="solid">
+          <Form.Item className="mb-0" initialValue="none" label="鉴权方式" name="authType">
+            <Radio.Group buttonStyle="solid" optionType="button" size="small">
               <Radio.Button value="none">无鉴权</Radio.Button>
               <Radio.Button value="bearer">Bearer Token</Radio.Button>
             </Radio.Group>
@@ -127,34 +134,52 @@ export default function SandboxDeployStep() {
         </div>
         <div className="p-4">
           <Form.Item
-            name="resourcePreset"
-            initialValue="small"
             className={resourcePreset === 'custom' ? 'mb-3' : 'mb-0'}
+            initialValue="small"
+            name="resourcePreset"
           >
             <Radio.Group
               className="w-full"
               onChange={(e) => {
-                const presets: Record<string, any> = {
-                  small: { cpuRequest: '250m', cpuLimit: '500m', memoryRequest: '256Mi', memoryLimit: '512Mi', ephemeralStorage: '1Gi' },
-                  medium: { cpuRequest: '500m', cpuLimit: '1', memoryRequest: '512Mi', memoryLimit: '1Gi', ephemeralStorage: '2Gi' },
-                  large: { cpuRequest: '1', cpuLimit: '2', memoryRequest: '1Gi', memoryLimit: '2Gi', ephemeralStorage: '4Gi' },
-                }
-                const p = presets[e.target.value]
-                if (p) form.setFieldsValue(p)
+                const presets: Record<string, Record<string, string>> = {
+                  large: {
+                    cpuLimit: '2',
+                    cpuRequest: '1',
+                    ephemeralStorage: '4Gi',
+                    memoryLimit: '2Gi',
+                    memoryRequest: '1Gi',
+                  },
+                  medium: {
+                    cpuLimit: '1',
+                    cpuRequest: '500m',
+                    ephemeralStorage: '2Gi',
+                    memoryLimit: '1Gi',
+                    memoryRequest: '512Mi',
+                  },
+                  small: {
+                    cpuLimit: '500m',
+                    cpuRequest: '250m',
+                    ephemeralStorage: '1Gi',
+                    memoryLimit: '512Mi',
+                    memoryRequest: '256Mi',
+                  },
+                };
+                const p = presets[e.target.value];
+                if (p) form.setFieldsValue(p);
               }}
             >
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { value: 'small', label: '小型', desc: '0.5C / 512Mi' },
-                  { value: 'medium', label: '中型', desc: '1C / 1Gi' },
-                  { value: 'large', label: '大型', desc: '2C / 2Gi' },
-                  { value: 'custom', label: '自定义', desc: '手动配置' },
+                  { desc: '0.5C / 512Mi', label: '小型', value: 'small' },
+                  { desc: '1C / 1Gi', label: '中型', value: 'medium' },
+                  { desc: '2C / 2Gi', label: '大型', value: 'large' },
+                  { desc: '手动配置', label: '自定义', value: 'custom' },
                 ].map((item) => (
                   <Radio.Button
-                    key={item.value}
-                    value={item.value}
                     className="h-auto text-center flex-1"
-                    style={{ padding: '8px 0', lineHeight: 1.3 }}
+                    key={item.value}
+                    style={{ lineHeight: 1.3, padding: '8px 0' }}
+                    value={item.value}
                   >
                     <div className="text-xs font-medium">{item.label}</div>
                     <div className="text-[10px] text-gray-400 mt-0.5">{item.desc}</div>
@@ -166,29 +191,54 @@ export default function SandboxDeployStep() {
 
           {resourcePreset === 'custom' ? (
             <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1 border-t border-gray-100">
-              <Form.Item name="cpuRequest" label="CPU Request" className="mb-0" initialValue="250m">
-                <Input size="small" className="font-mono text-xs" />
+              <Form.Item className="mb-0" initialValue="250m" label="CPU Request" name="cpuRequest">
+                <Input className="font-mono text-xs" size="small" />
               </Form.Item>
-              <Form.Item name="cpuLimit" label="CPU Limit" className="mb-0" initialValue="500m">
-                <Input size="small" className="font-mono text-xs" />
+              <Form.Item className="mb-0" initialValue="500m" label="CPU Limit" name="cpuLimit">
+                <Input className="font-mono text-xs" size="small" />
               </Form.Item>
-              <Form.Item name="memoryRequest" label="Memory Request" className="mb-0" initialValue="256Mi">
-                <Input size="small" className="font-mono text-xs" />
+              <Form.Item
+                className="mb-0"
+                initialValue="256Mi"
+                label="Memory Request"
+                name="memoryRequest"
+              >
+                <Input className="font-mono text-xs" size="small" />
               </Form.Item>
-              <Form.Item name="memoryLimit" label="Memory Limit" className="mb-0" initialValue="512Mi">
-                <Input size="small" className="font-mono text-xs" />
+              <Form.Item
+                className="mb-0"
+                initialValue="512Mi"
+                label="Memory Limit"
+                name="memoryLimit"
+              >
+                <Input className="font-mono text-xs" size="small" />
               </Form.Item>
-              <Form.Item name="ephemeralStorage" label="临时存储" className="mb-0" initialValue="1Gi">
-                <Input size="small" className="font-mono text-xs" />
+              <Form.Item
+                className="mb-0"
+                initialValue="1Gi"
+                label="临时存储"
+                name="ephemeralStorage"
+              >
+                <Input className="font-mono text-xs" size="small" />
               </Form.Item>
             </div>
           ) : (
             <>
-              <Form.Item name="cpuRequest" hidden initialValue="250m"><Input /></Form.Item>
-              <Form.Item name="cpuLimit" hidden initialValue="500m"><Input /></Form.Item>
-              <Form.Item name="memoryRequest" hidden initialValue="256Mi"><Input /></Form.Item>
-              <Form.Item name="memoryLimit" hidden initialValue="512Mi"><Input /></Form.Item>
-              <Form.Item name="ephemeralStorage" hidden initialValue="1Gi"><Input /></Form.Item>
+              <Form.Item hidden initialValue="250m" name="cpuRequest">
+                <Input />
+              </Form.Item>
+              <Form.Item hidden initialValue="500m" name="cpuLimit">
+                <Input />
+              </Form.Item>
+              <Form.Item hidden initialValue="256Mi" name="memoryRequest">
+                <Input />
+              </Form.Item>
+              <Form.Item hidden initialValue="512Mi" name="memoryLimit">
+                <Input />
+              </Form.Item>
+              <Form.Item hidden initialValue="1Gi" name="ephemeralStorage">
+                <Input />
+              </Form.Item>
             </>
           )}
         </div>
@@ -215,14 +265,14 @@ export default function SandboxDeployStep() {
                   <div className="text-[10px] text-gray-400 mb-1">{p.description}</div>
                 )}
                 <Form.Item
-                  name={['paramValues', p.name]}
                   className="mb-0"
-                  rules={p.required ? [{ required: true, message: `请输入 ${p.name}` }] : undefined}
+                  name={['paramValues', p.name]}
+                  rules={p.required ? [{ message: `请输入 ${p.name}`, required: true }] : undefined}
                 >
                   <Input
-                    size="small"
-                    placeholder={p.example || `请输入 ${p.name}`}
                     className="font-mono text-xs"
+                    placeholder={p.example || `请输入 ${p.name}`}
+                    size="small"
                   />
                 </Form.Item>
               </div>
@@ -231,5 +281,5 @@ export default function SandboxDeployStep() {
         </div>
       )}
     </div>
-  )
+  );
 }

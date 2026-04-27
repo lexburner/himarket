@@ -1,5 +1,6 @@
-import { ToolOutlined } from "@ant-design/icons";
-import { ProductIconRenderer } from "../icon/ProductIconRenderer";
+import { ToolOutlined } from '@ant-design/icons';
+
+import { ProductIconRenderer } from '../icon/ProductIconRenderer';
 
 interface McpCardProps {
   icon: string;
@@ -17,15 +18,21 @@ interface McpCardProps {
 }
 
 export function McpCard({
-  icon, name, mcpName, description, releaseDate,
-  protocols, toolCount, tags, categoryName,
-  subscribed, isLoggedIn,
+  categoryName,
+  description,
+  icon,
+  isLoggedIn,
+  mcpName,
+  name,
   onClick,
+  protocols,
+  releaseDate,
+  subscribed,
+  tags,
+  toolCount,
 }: McpCardProps) {
-
   return (
     <div
-      onClick={onClick}
       className="
         group bg-white/70 backdrop-blur-sm rounded-2xl p-5
         border border-gray-100/80
@@ -38,6 +45,14 @@ export function McpCard({
         min-h-[200px]
         flex flex-col
       "
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.();
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       {/* 已订阅角标 */}
       {isLoggedIn && subscribed && (
@@ -54,19 +69,25 @@ export function McpCard({
           <ProductIconRenderer className="w-full h-full object-cover" iconType={icon} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold text-gray-800 truncate group-hover:text-gray-900 transition-colors">{name}</h3>
+          <h3 className="text-base font-semibold text-gray-800 truncate group-hover:text-gray-900 transition-colors">
+            {name}
+          </h3>
           {mcpName && (
             <div className="text-[10px] text-gray-400 font-mono truncate mt-0.5">{mcpName}</div>
           )}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {protocols.map(p => (
-              <span key={p} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/10 text-colorPrimary">
+            {protocols.map((p) => (
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/10 text-colorPrimary"
+                key={p}
+              >
                 {p}
               </span>
             ))}
             {toolCount > 0 && (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/5 text-colorPrimary/80">
-                <ToolOutlined className="mr-0.5" />{toolCount}
+                <ToolOutlined className="mr-0.5" />
+                {toolCount}
               </span>
             )}
           </div>
@@ -75,14 +96,17 @@ export function McpCard({
 
       {/* 描述 */}
       <p className="max-h-12 text-sm mb-4 line-clamp-2 leading-relaxed flex-1 text-gray-500">
-        {description || "暂无描述"}
+        {description || '暂无描述'}
       </p>
 
       {/* 底部：标签 + 日期 */}
       <div className="h-10 flex items-center justify-between text-xs">
         <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
           {tags.slice(0, 2).map((t) => (
-            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 truncate max-w-[80px]">
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 truncate max-w-[80px]"
+              key={t}
+            >
               {t}
             </span>
           ))}
@@ -92,9 +116,10 @@ export function McpCard({
             </span>
           )}
         </div>
-        <span className="flex-shrink-0 text-gray-400 tabular-nums tracking-tight">{releaseDate}</span>
+        <span className="flex-shrink-0 text-gray-400 tabular-nums tracking-tight">
+          {releaseDate}
+        </span>
       </div>
-
     </div>
   );
 }

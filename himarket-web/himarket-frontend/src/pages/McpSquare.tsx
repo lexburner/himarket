@@ -1,23 +1,29 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import {
-  SearchOutlined, ToolOutlined, AppstoreOutlined,
-  CloudServerOutlined, StarOutlined, PlusOutlined,
-} from "@ant-design/icons";
-import { Input, Spin, message, Pagination } from "antd";
-import { useNavigate } from "react-router-dom";
-import { Layout } from "../components/Layout";
-import { CategoryMenu } from "../components/square/CategoryMenu";
-import { EmptyState } from "../components/EmptyState";
-import { useAuth } from "../hooks/useAuth";
-import { useDebounce } from "../hooks/useDebounce";
-import APIs, { type ICategory } from "../lib/apis";
-import { getIconString, parseMetaIcon } from "../lib/iconUtils";
-import type { IProductDetail, IMcpMeta } from "../lib/apis/product";
-import { getProductMcpMetaBatch, getProductMcpMetaBatchPublic } from "../lib/apis/product";
-import { ProductIconRenderer } from "../components/icon/ProductIconRenderer";
-import dayjs from "dayjs";
-import BackToTopButton from "../components/scroll-to-top";
-import { CardGridSkeleton } from "../components/loading";
+  SearchOutlined,
+  ToolOutlined,
+  AppstoreOutlined,
+  CloudServerOutlined,
+  StarOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import { Input, Spin, message, Pagination } from 'antd';
+import dayjs from 'dayjs';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { EmptyState } from '../components/EmptyState';
+import { ProductIconRenderer } from '../components/icon/ProductIconRenderer';
+import { Layout } from '../components/Layout';
+import { CardGridSkeleton } from '../components/loading';
+import BackToTopButton from '../components/scroll-to-top';
+import { CategoryMenu } from '../components/square/CategoryMenu';
+import { useAuth } from '../hooks/useAuth';
+import { useDebounce } from '../hooks/useDebounce';
+import APIs, { type ICategory } from '../lib/apis';
+import { getProductMcpMetaBatch, getProductMcpMetaBatchPublic } from '../lib/apis/product';
+import { getIconString, parseMetaIcon } from '../lib/iconUtils';
+
+import type { IProductDetail, IMcpMeta } from '../lib/apis/product';
 
 interface McpProductItem {
   product: IProductDetail;
@@ -29,14 +35,16 @@ function McpSquare() {
   const { isLoggedIn } = useAuth();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [activeTab, _setActiveTab] = useState<"market" | "my">("market");
+  const [activeTab, _setActiveTab] = useState<'market' | 'my'>('market');
   const [isStuck, setIsStuck] = useState(false);
 
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [committedSearch, setCommittedSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [committedSearch, setCommittedSearch] = useState('');
   const [mcpItems, setMcpItems] = useState<McpProductItem[]>([]);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; count: number }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; count: number }>>(
+    [],
+  );
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -51,8 +59,12 @@ function McpSquare() {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
-      ([entry]) => setIsStuck(!entry.isIntersecting),
-      { threshold: 0 }
+      ([entry]) => {
+        if (entry) setIsStuck(!entry.isIntersecting);
+      },
+      {
+        threshold: 0,
+      },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -67,64 +79,75 @@ function McpSquare() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await APIs.getCategoriesByProductType({ productType: "MCP_SERVER" });
-        if (response.code === "SUCCESS" && response.data?.content) {
+        const response = await APIs.getCategoriesByProductType({ productType: 'MCP_SERVER' });
+        if (response.code === 'SUCCESS' && response.data?.content) {
           const list = response.data.content.map((cat: ICategory) => ({
-            id: cat.categoryId, name: cat.name, count: 0,
+            count: 0,
+            id: cat.categoryId,
+            name: cat.name,
           }));
-          setCategories(list.length > 0 ? [{ id: "all", name: "全部", count: 0 }, ...list] : []);
+          setCategories(list.length > 0 ? [{ count: 0, id: 'all', name: '全部' }, ...list] : []);
         }
       } catch (error) {
-        console.error("Failed to fetch categories:", error);
+        console.error('Failed to fetch categories:', error);
       }
     };
     fetchCategories();
   }, []);
 
-  const fetchMetaForProducts = async (products: IProductDetail[]): Promise<McpProductItem[]> => {
-    if (products.length === 0) return [];
-    const productIds = products.map(p => p.productId);
-    try {
-      const fetchFn = isLoggedIn ? getProductMcpMetaBatch : getProductMcpMetaBatchPublic;
-      const res = await fetchFn(productIds);
-      const metaList = res.code === "SUCCESS" ? (res.data || []) : [];
-      // 按 productId 分组，取每个产品的第一条 meta
-      const metaByProduct = new Map<string, IMcpMeta>();
-      for (const meta of metaList) {
-        if (!metaByProduct.has(meta.productId)) {
-          metaByProduct.set(meta.productId, meta);
+  const fetchMetaForProducts = useCallback(
+    async (products: IProductDetail[]): Promise<McpProductItem[]> => {
+      if (products.length === 0) return [];
+      const productIds = products.map((p) => p.productId);
+      try {
+        const fetchFn = isLoggedIn ? getProductMcpMetaBatch : getProductMcpMetaBatchPublic;
+        const res = await fetchFn(productIds);
+        const metaList = res.code === 'SUCCESS' ? res.data || [] : [];
+        // 按 productId 分组，取每个产品的第一条 meta
+        const metaByProduct = new Map<string, IMcpMeta>();
+        for (const meta of metaList) {
+          if (!metaByProduct.has(meta.productId)) {
+            metaByProduct.set(meta.productId, meta);
+          }
         }
+        return products.map((product) => ({
+          meta: metaByProduct.get(product.productId) || null,
+          product,
+        }));
+      } catch {
+        return products.map((product) => ({ meta: null, product }));
       }
-      return products.map(product => ({
-        product,
-        meta: metaByProduct.get(product.productId) || null,
-      }));
-    } catch {
-      return products.map(product => ({ product, meta: null }));
-    }
-  };
+    },
+    [isLoggedIn],
+  );
 
   useEffect(() => {
-    if (activeTab !== "market") return;
+    if (activeTab !== 'market') return;
     const fetchProducts = async () => {
       setLoading(true);
       setMcpItems([]);
       try {
-        const categoryIds = activeCategory === "all" ? undefined : [activeCategory];
-        const response = await APIs.getProducts({ type: "MCP_SERVER", categoryIds, name: committedSearch || undefined, page: currentPage - 1, size: PAGE_SIZE });
-        if (response.code === "SUCCESS" && response.data?.content) {
+        const categoryIds = activeCategory === 'all' ? undefined : [activeCategory];
+        const response = await APIs.getProducts({
+          categoryIds,
+          name: committedSearch || undefined,
+          page: currentPage - 1,
+          size: PAGE_SIZE,
+          type: 'MCP_SERVER',
+        });
+        if (response.code === 'SUCCESS' && response.data?.content) {
           setTotalElements(response.data.totalElements);
           setMcpItems(await fetchMetaForProducts(response.data.content));
         }
       } catch (error) {
-        console.error("Failed to fetch products:", error);
-        message.error("获取MCP Server列表失败");
+        console.error('Failed to fetch products:', error);
+        message.error('获取MCP Server列表失败');
       } finally {
         setLoading(false);
       }
     };
     fetchProducts();
-  }, [activeCategory, activeTab, committedSearch, isLoggedIn, currentPage]);
+  }, [activeCategory, activeTab, committedSearch, isLoggedIn, currentPage, fetchMetaForProducts]);
 
   // Unified consumer data loader: fetches subscriptions once and derives both
   // subscribedProductIds (for market tab badges) and myMcpItems (for "My MCP" tab)
@@ -134,26 +157,28 @@ function McpSquare() {
     setMyMcpsLoading(true);
     try {
       const consumerRes = await APIs.getPrimaryConsumer();
-      if (consumerRes.code !== "SUCCESS" || !consumerRes.data) {
+      if (consumerRes.code !== 'SUCCESS' || !consumerRes.data) {
         setSubscribedProductIds(new Set());
         setMyMcpItems([]);
         return;
       }
       consumerIdRef.current = consumerRes.data.consumerId;
 
-      const subRes = await APIs.getConsumerSubscriptions(consumerRes.data.consumerId, { size: 200 });
-      if (subRes.code !== "SUCCESS" || !subRes.data?.content) {
+      const subRes = await APIs.getConsumerSubscriptions(consumerRes.data.consumerId, {
+        size: 200,
+      });
+      if (subRes.code !== 'SUCCESS' || !subRes.data?.content) {
         setSubscribedProductIds(new Set());
         setMyMcpItems([]);
         return;
       }
 
-      const approvedSubs = subRes.data.content.filter(s => s.status === 'APPROVED');
-      setSubscribedProductIds(new Set(approvedSubs.map(s => s.productId)));
+      const approvedSubs = subRes.data.content.filter((s) => s.status === 'APPROVED');
+      setSubscribedProductIds(new Set(approvedSubs.map((s) => s.productId)));
 
       // Build "My MCP" items from MCP_SERVER subscriptions
-      const mcpSubs = approvedSubs.filter(s => s.productType === 'MCP_SERVER');
-      const productIds = mcpSubs.map(s => s.productId);
+      const mcpSubs = approvedSubs.filter((s) => s.productType === 'MCP_SERVER');
+      const productIds = mcpSubs.map((s) => s.productId);
 
       if (productIds.length === 0) {
         setMyMcpItems([]);
@@ -162,7 +187,7 @@ function McpSquare() {
 
       const fetchFn = isLoggedIn ? getProductMcpMetaBatch : getProductMcpMetaBatchPublic;
       const metaRes = await fetchFn(productIds);
-      const metaList = metaRes.code === "SUCCESS" ? (metaRes.data || []) : [];
+      const metaList = metaRes.code === 'SUCCESS' ? metaRes.data || [] : [];
       const metaByProduct = new Map<string, IMcpMeta>();
       for (const meta of metaList) {
         if (!metaByProduct.has(meta.productId)) {
@@ -170,17 +195,25 @@ function McpSquare() {
         }
       }
 
-      const items: McpProductItem[] = mcpSubs.map(sub => {
+      const items: McpProductItem[] = mcpSubs.map((sub) => {
         const meta = metaByProduct.get(sub.productId);
         const product: IProductDetail = {
+          createAt: sub.createAt || '',
+          description: meta?.description || '',
+          icon: meta?.icon
+            ? (() => {
+                try {
+                  return JSON.parse(meta.icon);
+                } catch {
+                  return undefined;
+                }
+              })()
+            : undefined,
+          name: sub.productName || meta?.displayName || meta?.mcpName || '',
           productId: sub.productId,
-          name: sub.productName || meta?.displayName || meta?.mcpName || "",
-          description: meta?.description || "",
-          type: "MCP_SERVER",
-          icon: meta?.icon ? (() => { try { return JSON.parse(meta.icon); } catch { return undefined; } })() : undefined,
-          createAt: sub.createAt || "",
+          type: 'MCP_SERVER',
         } as IProductDetail;
-        return { product, meta: meta || null };
+        return { meta: meta || null, product };
       });
       setMyMcpItems(items);
     } catch {
@@ -198,7 +231,7 @@ function McpSquare() {
 
   // Refresh when switching to "my" tab
   useEffect(() => {
-    if (activeTab === "my" && isLoggedIn) fetchConsumerData();
+    if (activeTab === 'my' && isLoggedIn) fetchConsumerData();
   }, [activeTab, fetchConsumerData, isLoggedIn]);
 
   const handlePageChange = (page: number) => {
@@ -217,12 +250,17 @@ function McpSquare() {
 
   return (
     <Layout>
-      <div className="flex flex-col h-[calc(100vh-96px)] overflow-auto scrollbar-hide" ref={scrollContainerRef}>
+      <div
+        className="flex flex-col h-[calc(100vh-96px)] overflow-auto scrollbar-hide"
+        ref={scrollContainerRef}
+      >
         {/* IntersectionObserver 哨兵元素 */}
-        <div ref={sentinelRef} className="h-0 flex-shrink-0" />
+        <div className="h-0 flex-shrink-0" ref={sentinelRef} />
 
         {/* 搜索区域 - sticky */}
-        <div className={`sticky top-0 z-50 backdrop-blur-md transition-shadow duration-200 flex-shrink-0 ${isStuck ? 'shadow-sm bg-white/80' : ''}`}>
+        <div
+          className={`sticky top-0 z-50 backdrop-blur-md transition-shadow duration-200 flex-shrink-0 ${isStuck ? 'shadow-sm bg-white/80' : ''}`}
+        >
           <div className="flex flex-col gap-4 px-6 py-4">
             {/* 第一行：统计信息 */}
             <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
@@ -237,8 +275,8 @@ function McpSquare() {
             <div className="relative flex items-center justify-center gap-3">
               {isLoggedIn && (
                 <button
-                  onClick={() => navigate("/mcp/create")}
                   className="group flex items-center gap-0 h-10 px-3 rounded-xl bg-black text-white hover:shadow-md transition-all duration-300 flex-shrink-0 overflow-hidden"
+                  onClick={() => navigate('/mcp/create')}
                 >
                   <PlusOutlined className="text-base" />
                   <span className="max-w-0 overflow-hidden group-hover:max-w-[60px] transition-all duration-300 whitespace-nowrap group-hover:ml-1.5">
@@ -248,35 +286,35 @@ function McpSquare() {
               )}
               <div className="w-full max-w-xl">
                 <Input
-                  placeholder="搜索 MCP Server..."
-                  value={searchQuery}
+                  allowClear
+                  className="rounded-xl text-base"
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    if (!e.target.value) setCommittedSearch("");
+                    if (!e.target.value) setCommittedSearch('');
                   }}
                   onPressEnter={handleSearchCommit}
+                  placeholder="搜索 MCP Server..."
                   size="large"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                  }}
                   suffix={
                     <button
-                      onClick={handleSearchCommit}
                       className="bg-black hover:bg-gray-800 text-white rounded-lg p-2 transition-colors"
+                      onClick={handleSearchCommit}
                       type="button"
                     >
                       <SearchOutlined className="text-lg" />
                     </button>
                   }
-                  className="rounded-xl text-base"
-                  style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.95)",
-                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-                  }}
-                  allowClear
+                  value={searchQuery}
                 />
               </div>
               {isLoggedIn && (
                 <button
-                  onClick={() => navigate("/mcp/my")}
                   className="absolute right-0 flex items-center gap-1.5 h-10 px-4 rounded-xl border border-gray-200 bg-white text-gray-700 text-sm font-medium transition-all duration-200 flex-shrink-0 hover:bg-black hover:text-white hover:border-black hover:shadow-md"
+                  onClick={() => navigate('/mcp/my')}
                 >
                   <StarOutlined className="text-sm" />
                   我的 MCP
@@ -290,11 +328,11 @@ function McpSquare() {
             </div>
 
             {/* 第三行：分类标签 - 仅广场 tab 显示 */}
-            {activeTab === "market" && categories.length > 0 && (
+            {activeTab === 'market' && categories.length > 0 && (
               <div className="flex-1 min-w-0">
                 <CategoryMenu
-                  categories={categories}
                   activeCategory={activeCategory}
+                  categories={categories}
                   onSelectCategory={handleCategoryChange}
                 />
               </div>
@@ -305,17 +343,17 @@ function McpSquare() {
         {/* 内容区域 */}
         <div className="flex-1 px-4 pt-2 pb-4">
           <div className="pb-4">
-            {activeTab === "market" ? (
+            {activeTab === 'market' ? (
               <MarketContent
-                loading={loading}
-                items={mcpItems}
-                subscribedProductIds={subscribedProductIds}
-                isLoggedIn={isLoggedIn}
-                onViewDetail={(pid) => navigate(`/mcp/${pid}`)}
                 currentPage={currentPage}
-                totalElements={totalElements}
-                pageSize={PAGE_SIZE}
+                isLoggedIn={isLoggedIn}
+                items={mcpItems}
+                loading={loading}
                 onPageChange={handlePageChange}
+                onViewDetail={(pid) => navigate(`/mcp/${pid}`)}
+                pageSize={PAGE_SIZE}
+                subscribedProductIds={subscribedProductIds}
+                totalElements={totalElements}
               />
             ) : (
               <MyMcpContent
@@ -327,13 +365,23 @@ function McpSquare() {
           </div>
         </div>
       </div>
-      <BackToTopButton container={scrollContainerRef.current!} />
+      <BackToTopButton container={scrollContainerRef.current ?? undefined} />
     </Layout>
   );
 }
 
 /* ==================== 广场内容 ==================== */
-function MarketContent({ loading, items, subscribedProductIds, isLoggedIn, onViewDetail, currentPage, totalElements, pageSize, onPageChange }: {
+function MarketContent({
+  currentPage,
+  isLoggedIn,
+  items,
+  loading,
+  onPageChange,
+  onViewDetail,
+  pageSize,
+  subscribedProductIds,
+  totalElements,
+}: {
   loading: boolean;
   items: McpProductItem[];
   subscribedProductIds: Set<string>;
@@ -345,7 +393,7 @@ function MarketContent({ loading, items, subscribedProductIds, isLoggedIn, onVie
   onPageChange: (page: number) => void;
 }) {
   if (loading) {
-    return <CardGridSkeleton count={8} columns={{ sm: 1, md: 2, lg: 4 }} />;
+    return <CardGridSkeleton columns={{ lg: 4, md: 2, sm: 1 }} count={8} />;
   }
 
   if (items.length === 0) {
@@ -357,11 +405,11 @@ function MarketContent({ loading, items, subscribedProductIds, isLoggedIn, onVie
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {items.map((item) => (
           <McpCard
-            key={item.product.productId}
-            item={item}
-            subscribed={subscribedProductIds.has(item.product.productId)}
             isLoggedIn={isLoggedIn}
+            item={item}
+            key={item.product.productId}
             onViewDetail={() => onViewDetail(item.product.productId)}
+            subscribed={subscribedProductIds.has(item.product.productId)}
           />
         ))}
       </div>
@@ -369,11 +417,11 @@ function MarketContent({ loading, items, subscribedProductIds, isLoggedIn, onVie
         <div className="flex justify-center mt-8 mb-4">
           <Pagination
             current={currentPage}
-            pageSize={pageSize}
-            total={totalElements}
             onChange={onPageChange}
-            showSizeChanger={false}
+            pageSize={pageSize}
             showQuickJumper
+            showSizeChanger={false}
+            total={totalElements}
           />
         </div>
       )}
@@ -382,13 +430,18 @@ function MarketContent({ loading, items, subscribedProductIds, isLoggedIn, onVie
 }
 
 /* ==================== MCP 卡片（匹配 ModelCard 风格） ==================== */
-function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
+function McpCard({
+  isLoggedIn,
+  item,
+  onViewDetail,
+  subscribed,
+}: {
   item: McpProductItem;
   subscribed: boolean;
   isLoggedIn: boolean;
   onViewDetail: () => void;
 }) {
-  const { product, meta } = item;
+  const { meta, product } = item;
   const displayName = meta?.displayName || meta?.mcpName || product.name;
   const description = meta?.description || product.description;
 
@@ -397,20 +450,35 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
     const set = new Set<string>();
     // 1. meta.protocolType（MCP 元信息上的协议）
     if (meta?.protocolType) {
-      meta.protocolType.split(",").map(p => p.trim().toUpperCase()).filter(Boolean).forEach(p => set.add(p));
+      meta.protocolType
+        .split(',')
+        .map((p) => p.trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((p) => set.add(p));
     }
     // 2. 冷数据：product.mcpConfig.meta.protocol
     const coldProto = product.mcpConfig?.meta?.protocol;
     if (coldProto) {
-      coldProto.split(",").map((p: string) => p.trim().toUpperCase()).filter(Boolean).forEach((p: string) => set.add(p));
+      coldProto
+        .split(',')
+        .map((p: string) => p.trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((p: string) => set.add(p));
     }
     // 3. 热数据：endpoint 协议
     if (meta?.endpointProtocol) {
-      meta.endpointProtocol.split(",").map(p => p.trim().toUpperCase()).filter(Boolean).forEach(p => set.add(p));
+      meta.endpointProtocol
+        .split(',')
+        .map((p) => p.trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((p) => set.add(p));
     }
     // 4. rawConfig 存在说明支持 Stdio
-    if (product.mcpConfig?.mcpServerConfig?.rawConfig && Object.keys(product.mcpConfig.mcpServerConfig.rawConfig).length > 0) {
-      set.add("STDIO");
+    if (
+      product.mcpConfig?.mcpServerConfig?.rawConfig &&
+      Object.keys(product.mcpConfig.mcpServerConfig.rawConfig).length > 0
+    ) {
+      set.add('STDIO');
     }
     return Array.from(set);
   })();
@@ -419,25 +487,34 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
     const src = meta?.toolsConfig || product.mcpConfig?.tools;
     if (!src) return 0;
     try {
-      const parsed = typeof src === "string" ? JSON.parse(src) : src;
+      const parsed = typeof src === 'string' ? JSON.parse(src) : src;
       if (Array.isArray(parsed)) return parsed.length;
       return parsed?.tools?.length || 0;
-    } catch { return 0; }
+    } catch {
+      return 0;
+    }
   })();
 
   const tagList: string[] = (() => {
     if (!meta?.tags) return [];
     try {
       const parsed = JSON.parse(meta.tags);
-      return Array.isArray(parsed) ? parsed : meta.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+      return Array.isArray(parsed)
+        ? parsed
+        : meta.tags
+            .split(',')
+            .map((t: string) => t.trim())
+            .filter(Boolean);
     } catch {
-      return meta.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
+      return meta.tags
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter(Boolean);
     }
   })();
 
   return (
     <div
-      onClick={onViewDetail}
       className="
         bg-white/60 backdrop-blur-sm rounded-xl p-4
         border border-white/40
@@ -448,6 +525,14 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
         relative overflow-hidden group
         h-[200px] flex flex-col
       "
+      onClick={onViewDetail}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onViewDetail();
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       {/* 已订阅角标 */}
       {isLoggedIn && subscribed && (
@@ -461,7 +546,10 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
       <div className="flex items-center gap-3 mb-3">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-colorPrimary/10 to-colorPrimary/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
           {meta?.icon || product.icon ? (
-            <ProductIconRenderer className="w-full h-full object-cover" iconType={getIconString(parseMetaIcon(meta?.icon) || product.icon)} />
+            <ProductIconRenderer
+              className="w-full h-full object-cover"
+              iconType={getIconString(parseMetaIcon(meta?.icon) || product.icon)}
+            />
           ) : (
             <AppstoreOutlined className="text-colorPrimary text-lg" />
           )}
@@ -469,17 +557,23 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 truncate">{displayName}</h3>
           {meta?.mcpName && (
-            <div className="text-[10px] text-gray-400 font-mono truncate mt-0.5">{meta.mcpName}</div>
+            <div className="text-[10px] text-gray-400 font-mono truncate mt-0.5">
+              {meta.mcpName}
+            </div>
           )}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {allProtocols.map(p => (
-              <span key={p} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/10 text-colorPrimary">
+            {allProtocols.map((p) => (
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/10 text-colorPrimary"
+                key={p}
+              >
                 {p}
               </span>
             ))}
             {toolCount > 0 && (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/5 text-colorPrimary/80">
-                <ToolOutlined className="mr-0.5" />{toolCount}
+                <ToolOutlined className="mr-0.5" />
+                {toolCount}
               </span>
             )}
           </div>
@@ -488,14 +582,17 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
 
       {/* 描述 */}
       <p className="text-sm mb-2 line-clamp-2 leading-relaxed flex-1 text-[#a3a3a3]">
-        {description || "暂无描述"}
+        {description || '暂无描述'}
       </p>
 
       {/* 底部：标签 + 日期 */}
       <div className="h-10 flex items-center justify-between text-xs transition-opacity duration-300">
         <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
           {tagList.slice(0, 2).map((t) => (
-            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 truncate max-w-[80px]">
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full bg-gray-50 text-gray-500 border border-gray-100 truncate max-w-[80px]"
+              key={t}
+            >
               {t}
             </span>
           ))}
@@ -505,20 +602,30 @@ function McpCard({ item, subscribed, isLoggedIn, onViewDetail }: {
             </span>
           )}
         </div>
-        <span className="flex-shrink-0 text-[#a3a3a3]">{dayjs(product.createAt).format("YYYY-MM-DD")}</span>
+        <span className="flex-shrink-0 text-[#a3a3a3]">
+          {dayjs(product.createAt).format('YYYY-MM-DD')}
+        </span>
       </div>
     </div>
   );
 }
 
 /* ==================== 我的 MCP 内容 ==================== */
-function MyMcpContent({ items, loading, onViewDetail }: {
+function MyMcpContent({
+  items,
+  loading,
+  onViewDetail,
+}: {
   items: McpProductItem[];
   loading: boolean;
   onViewDetail: (productId: string) => void;
 }) {
   if (loading) {
-    return <div className="flex items-center justify-center h-full"><Spin size="large" tip="加载中..." /></div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Spin size="large" tip="加载中..." />
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -537,8 +644,8 @@ function MyMcpContent({ items, loading, onViewDetail }: {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((item) => (
           <MyMcpCard
-            key={item.product.productId}
             item={item}
+            key={item.product.productId}
             onViewDetail={() => onViewDetail(item.product.productId)}
           />
         ))}
@@ -548,11 +655,8 @@ function MyMcpContent({ items, loading, onViewDetail }: {
 }
 
 /* ==================== 我的 MCP 卡片 ==================== */
-function MyMcpCard({ item, onViewDetail }: {
-  item: McpProductItem;
-  onViewDetail: () => void;
-}) {
-  const { product, meta } = item;
+function MyMcpCard({ item, onViewDetail }: { item: McpProductItem; onViewDetail: () => void }) {
+  const { meta, product } = item;
   const displayName = meta?.displayName || meta?.mcpName || product.name;
   const description = meta?.description || product.description;
 
@@ -560,17 +664,32 @@ function MyMcpCard({ item, onViewDetail }: {
   const allProtocols = (() => {
     const set = new Set<string>();
     if (meta?.protocolType) {
-      meta.protocolType.split(",").map(p => p.trim().toUpperCase()).filter(Boolean).forEach(p => set.add(p));
+      meta.protocolType
+        .split(',')
+        .map((p) => p.trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((p) => set.add(p));
     }
     const coldProto = product.mcpConfig?.meta?.protocol;
     if (coldProto) {
-      coldProto.split(",").map((p: string) => p.trim().toUpperCase()).filter(Boolean).forEach((p: string) => set.add(p));
+      coldProto
+        .split(',')
+        .map((p: string) => p.trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((p: string) => set.add(p));
     }
     if (meta?.endpointProtocol) {
-      meta.endpointProtocol.split(",").map(p => p.trim().toUpperCase()).filter(Boolean).forEach(p => set.add(p));
+      meta.endpointProtocol
+        .split(',')
+        .map((p) => p.trim().toUpperCase())
+        .filter(Boolean)
+        .forEach((p) => set.add(p));
     }
-    if (product.mcpConfig?.mcpServerConfig?.rawConfig && Object.keys(product.mcpConfig.mcpServerConfig.rawConfig).length > 0) {
-      set.add("STDIO");
+    if (
+      product.mcpConfig?.mcpServerConfig?.rawConfig &&
+      Object.keys(product.mcpConfig.mcpServerConfig.rawConfig).length > 0
+    ) {
+      set.add('STDIO');
     }
     return Array.from(set);
   })();
@@ -579,15 +698,16 @@ function MyMcpCard({ item, onViewDetail }: {
     const src = meta?.toolsConfig || product.mcpConfig?.tools;
     if (!src) return 0;
     try {
-      const parsed = typeof src === "string" ? JSON.parse(src) : src;
+      const parsed = typeof src === 'string' ? JSON.parse(src) : src;
       if (Array.isArray(parsed)) return parsed.length;
       return parsed?.tools?.length || 0;
-    } catch { return 0; }
+    } catch {
+      return 0;
+    }
   })();
 
   return (
     <div
-      onClick={onViewDetail}
       className="
         bg-white/60 backdrop-blur-sm rounded-xl p-4
         border border-white/40
@@ -598,12 +718,23 @@ function MyMcpCard({ item, onViewDetail }: {
         relative overflow-hidden group
         h-[200px] flex flex-col
       "
+      onClick={onViewDetail}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onViewDetail();
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       {/* 头部：icon + 名称 + 标签 */}
       <div className="flex items-center gap-3 mb-3">
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-colorPrimary/10 to-colorPrimary/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
           {meta?.icon || product.icon ? (
-            <ProductIconRenderer className="w-full h-full object-cover" iconType={getIconString(parseMetaIcon(meta?.icon) || product.icon)} />
+            <ProductIconRenderer
+              className="w-full h-full object-cover"
+              iconType={getIconString(parseMetaIcon(meta?.icon) || product.icon)}
+            />
           ) : (
             <AppstoreOutlined className="text-colorPrimary text-lg" />
           )}
@@ -611,17 +742,23 @@ function MyMcpCard({ item, onViewDetail }: {
         <div className="flex-1 min-w-0">
           <h3 className="text-base font-semibold text-gray-900 truncate">{displayName}</h3>
           {meta?.mcpName && (
-            <div className="text-[10px] text-gray-400 font-mono truncate mt-0.5">{meta.mcpName}</div>
+            <div className="text-[10px] text-gray-400 font-mono truncate mt-0.5">
+              {meta.mcpName}
+            </div>
           )}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {allProtocols.map(p => (
-              <span key={p} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/10 text-colorPrimary">
+            {allProtocols.map((p) => (
+              <span
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/10 text-colorPrimary"
+                key={p}
+              >
                 {p}
               </span>
             ))}
             {toolCount > 0 && (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-colorPrimary/5 text-colorPrimary/80">
-                <ToolOutlined className="mr-0.5" />{toolCount}
+                <ToolOutlined className="mr-0.5" />
+                {toolCount}
               </span>
             )}
           </div>
@@ -630,7 +767,7 @@ function MyMcpCard({ item, onViewDetail }: {
 
       {/* 描述 */}
       <p className="text-sm mb-2 line-clamp-2 leading-relaxed flex-1 text-[#a3a3a3]">
-        {description || "暂无描述"}
+        {description || '暂无描述'}
       </p>
 
       {/* 底部 */}
@@ -638,7 +775,9 @@ function MyMcpCard({ item, onViewDetail }: {
         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 border border-green-100">
           已订阅
         </span>
-        <span className="flex-shrink-0 text-[#a3a3a3]">{dayjs(product.createAt).format("YYYY-MM-DD")}</span>
+        <span className="flex-shrink-0 text-[#a3a3a3]">
+          {dayjs(product.createAt).format('YYYY-MM-DD')}
+        </span>
       </div>
     </div>
   );

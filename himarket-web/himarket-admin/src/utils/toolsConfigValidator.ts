@@ -2,8 +2,8 @@
  * 工具配置校验结果
  */
 export interface ValidationResult {
-  valid: boolean
-  error?: string
+  valid: boolean;
+  error?: string;
 }
 
 /**
@@ -19,15 +19,15 @@ export interface ValidationResult {
  * @returns 校验结果
  */
 export function validateToolsConfig(jsonStr: string): ValidationResult {
-  let parsed: unknown
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(jsonStr)
+    parsed = JSON.parse(jsonStr);
   } catch {
-    return { valid: false, error: 'JSON 格式不合法' }
+    return { error: 'JSON 格式不合法', valid: false };
   }
 
   if (!Array.isArray(parsed)) {
-    return { valid: false, error: '工具配置必须是 JSON 数组格式' }
+    return { error: '工具配置必须是 JSON 数组格式', valid: false };
   }
 
   for (const item of parsed) {
@@ -37,13 +37,13 @@ export function validateToolsConfig(jsonStr: string): ValidationResult {
       typeof item.name !== 'string' ||
       item.name.trim() === ''
     ) {
-      return { valid: false, error: '每个工具必须包含非空的 name 字段' }
+      return { error: '每个工具必须包含非空的 name 字段', valid: false };
     }
 
     if (typeof item.description !== 'string') {
-      return { valid: false, error: '每个工具必须包含 description 字段' }
+      return { error: '每个工具必须包含 description 字段', valid: false };
     }
   }
 
-  return { valid: true }
+  return { valid: true };
 }

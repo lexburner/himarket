@@ -1,4 +1,4 @@
-import { Form, Input, Tag } from 'antd'
+import { Form, Input, Tag } from 'antd';
 
 /**
  * ServiceIntroStep — Markdown 格式的服务文档编辑步骤。
@@ -16,18 +16,18 @@ export default function ServiceIntroStep() {
             使用 Markdown 语法编写，发布后将渲染为富文本
           </div>
         </div>
-        <Tag color="blue" className="m-0 border-0">
+        <Tag className="m-0 border-0" color="blue">
           Markdown
         </Tag>
       </div>
 
-      <Form.Item name="serviceIntro" className="mb-0">
+      <Form.Item className="mb-0" name="serviceIntro">
         <Input.TextArea
-          placeholder={`# 服务介绍\n\n简要描述你的 MCP Server...\n\n## 功能特性\n\n- 特性一\n- 特性二\n\n## 使用方式\n\n\`\`\`bash\nnpx -y @your/mcp-server\n\`\`\`\n\n## 注意事项\n\n> 请确保已配置必要的环境变量`}
-          autoSize={{ minRows: 16, maxRows: 22 }}
+          autoSize={{ maxRows: 22, minRows: 16 }}
           className="font-mono text-xs"
+          placeholder={`# 服务介绍\n\n简要描述你的 MCP Server...\n\n## 功能特性\n\n- 特性一\n- 特性二\n\n## 使用方式\n\n\`\`\`bash\nnpx -y @your/mcp-server\n\`\`\`\n\n## 注意事项\n\n> 请确保已配置必要的环境变量`}
         />
       </Form.Item>
     </>
-  )
+  );
 }

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Modal, Form, Select, Table, message, Space, Input, Button } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { Modal, Form, Select, Table, message, Space, Input, Button } from 'antd';
+import { useState, useEffect } from 'react';
+
 import { apiProductApi, gatewayApi, nacosApi } from '@/lib/api';
-import type { TableColumnsType } from 'antd';
 import type { Gateway } from '@/types/gateway';
+
+import type { TableColumnsType } from 'antd';
 
 interface ImportProductsModalProps {
   visible: boolean;
@@ -31,25 +33,25 @@ interface ServiceItem {
 type SourceType = 'HIGRESS' | 'AI_GATEWAY' | 'NACOS';
 
 const PRODUCT_TYPE_LABELS: Record<string, string> = {
-  REST_API: 'REST API',
-  MCP_SERVER: 'MCP Server',
   AGENT_API: 'Agent API',
-  MODEL_API: 'Model API',
   AGENT_SKILL: 'Agent Skill',
+  MCP_SERVER: 'MCP Server',
+  MODEL_API: 'Model API',
+  REST_API: 'REST API',
   WORKER: 'Worker',
 };
 
 const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
-  HIGRESS: 'Higress 网关',
   AI_GATEWAY: 'AI 网关实例',
+  HIGRESS: 'Higress 网关',
   NACOS: 'Nacos 实例',
 };
 
 export default function ImportProductsModal({
-  visible,
   onCancel,
   onSuccess,
   productType,
+  visible,
 }: ImportProductsModalProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -57,8 +59,10 @@ export default function ImportProductsModal({
   const [sourceType, setSourceType] = useState<SourceType>('HIGRESS');
   const [higressGateways, setHigressGateways] = useState<Gateway[]>([]);
   const [aiGateways, setAiGateways] = useState<Gateway[]>([]);
-  const [nacosInstances, setNacosInstances] = useState<any[]>([]);
-  const [namespaces, setNamespaces] = useState<any[]>([]);
+  const [nacosInstances, setNacosInstances] = useState<
+    Array<{ nacosId: string; nacosName: string }>
+  >([]);
+  const [namespaces, setNamespaces] = useState<unknown[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [selectedServiceKeys, setSelectedServiceKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState<string>('');
@@ -71,10 +75,6 @@ export default function ImportProductsModal({
   // Higress 网关仅支持 MCP_SERVER 批量导入
   // REST_API, MODEL_API: 仅支持 AI 网关
   // MCP_SERVER, AGENT_API: 支持 AI 网关和 Nacos
-  const supportsNacos =
-    productType === 'MCP_SERVER' ||
-    productType === 'AGENT_API';
-
   const supportsHigress = productType === 'MCP_SERVER';
 
   const supportsAIGateway =
@@ -95,7 +95,7 @@ export default function ImportProductsModal({
       : '';
 
   // 过滤服务列表
-  const filteredServices = services.filter(service => {
+  const filteredServices = services.filter((service) => {
     if (!searchText) return true;
     const lowerSearch = searchText.toLowerCase();
     return (
@@ -111,7 +111,7 @@ export default function ImportProductsModal({
 
   // 全选/反选当前过滤结果
   const handleSelectAll = () => {
-    const allKeys = filteredServices.map(s => s.key);
+    const allKeys = filteredServices.map((s) => s.key);
     setSelectedServiceKeys(allKeys);
   };
 
@@ -126,7 +126,11 @@ export default function ImportProductsModal({
   const resetForm = () => {
     form.resetFields();
     // 根据产品类型设置默认数据源
-    const defaultSourceType = supportsHigress ? 'HIGRESS' : supportsAIGateway ? 'AI_GATEWAY' : 'NACOS';
+    const defaultSourceType = supportsHigress
+      ? 'HIGRESS'
+      : supportsAIGateway
+        ? 'AI_GATEWAY'
+        : 'NACOS';
     setSourceType(defaultSourceType);
     setServices([]);
     setSelectedServiceKeys([]);
@@ -143,15 +147,16 @@ export default function ImportProductsModal({
 
       // 分类网关
       const higress = allGateways.filter((gw: Gateway) => gw.gatewayType === 'HIGRESS');
-      const aiGws = allGateways.filter((gw: Gateway) =>
-        gw.gatewayType === 'APIG_AI' ||
-        gw.gatewayType === 'ADP_AI_GATEWAY' ||
-        gw.gatewayType === 'APSARA_GATEWAY'
+      const aiGws = allGateways.filter(
+        (gw: Gateway) =>
+          gw.gatewayType === 'APIG_AI' ||
+          gw.gatewayType === 'ADP_AI_GATEWAY' ||
+          gw.gatewayType === 'APSARA_GATEWAY',
       );
 
       setHigressGateways(higress);
       setAiGateways(aiGws);
-    } catch (error) {
+    } catch (_error) {
       message.error('获取网关列表失败');
     }
   };
@@ -162,8 +167,9 @@ export default function ImportProductsModal({
       const res = await nacosApi.getNacos({ page: 0, size: 100 });
       const instances = res.data?.content || [];
       setNacosInstances(instances);
-    } catch (error: any) {
-      message.error(`获取 Nacos 列表失败: ${error.response?.data?.message || error.message}`);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      message.error(`获取 Nacos 列表失败: ${err.response?.data?.message || err.message}`);
       setNacosInstances([]);
     }
   };
@@ -172,13 +178,17 @@ export default function ImportProductsModal({
   const fetchNamespaces = async (nacosId: string) => {
     try {
       const res = await nacosApi.getNamespaces(nacosId, { page: 0, size: 100 });
-      setNamespaces(res.data?.content || []);
+      const nsContent = (res.data?.content || []) as unknown[];
+      setNamespaces(nsContent);
       // 默认选择 public 命名空间
-      const publicNs = res.data?.content?.find((ns: any) => ns.namespaceId === 'public');
+      const publicNs = nsContent.find((ns: unknown) => {
+        const n = ns as { namespaceId?: string };
+        return n.namespaceId === 'public';
+      });
       if (publicNs) {
         form.setFieldValue('namespaceId', 'public');
       }
-    } catch (error) {
+    } catch (_error) {
       message.error('获取命名空间列表失败');
       setNamespaces([]);
     }
@@ -201,64 +211,87 @@ export default function ImportProductsModal({
     setServicesLoading(true);
     setCurrentPage(1); // 加载新服务列表时重置分页
     try {
-      let res: any;
-      let loadedCount = 0;
+      let res: unknown;
 
       if (isGatewaySource) {
         // 根据产品类型调用不同的 API
         switch (productType) {
           case 'REST_API':
-            res = await gatewayApi.getGatewayRestApis(values.gatewayId, { page: 0, size: pageSize });
+            res = await gatewayApi.getGatewayRestApis(values.gatewayId, {
+              page: 0,
+              size: pageSize,
+            });
             {
-              const items = (res.data?.content || []).map((item: any) => ({
-                key: item.apiId,
-                name: item.apiName,
-                description: item.description,
-                apiId: item.apiId,
-              }));
+              const responseData = res as { data?: { content?: unknown[] } };
+              const items = (responseData.data?.content || []).map((item: unknown) => {
+                const it = item as Record<string, string>;
+                return {
+                  apiId: it.apiId,
+                  description: it.description,
+                  key: it.apiId || '',
+                  name: it.apiName || '',
+                };
+              });
               setServices(items);
-              loadedCount = items.length;
             }
             break;
           case 'MCP_SERVER':
-            res = await gatewayApi.getGatewayMcpServers(values.gatewayId, { page: 0, size: pageSize });
+            res = await gatewayApi.getGatewayMcpServers(values.gatewayId, {
+              page: 0,
+              size: pageSize,
+            });
             {
-              const items = (res.data?.content || []).map((item: any) => ({
-                key: item.mcpServerId || item.mcpServerName,
-                name: item.mcpServerName,
-                description: item.description,
-                mcpServerId: item.mcpServerId,
-                mcpRouteId: item.mcpRouteId,
-                mcpServerName: item.mcpServerName,
-              }));
+              const responseData = res as { data?: { content?: unknown[] } };
+              const items = (responseData.data?.content || []).map((item: unknown) => {
+                const it = item as Record<string, string>;
+                return {
+                  description: it.description,
+                  key: it.mcpServerId || it.mcpServerName || '',
+                  mcpRouteId: it.mcpRouteId,
+                  mcpServerId: it.mcpServerId,
+                  mcpServerName: it.mcpServerName,
+                  name: it.mcpServerName || '',
+                };
+              });
               setServices(items);
-              loadedCount = items.length;
             }
             break;
           case 'AGENT_API':
-            res = await gatewayApi.getGatewayAgentApis(values.gatewayId, { page: 0, size: pageSize });
+            res = await gatewayApi.getGatewayAgentApis(values.gatewayId, {
+              page: 0,
+              size: pageSize,
+            });
             {
-              const items = (res.data?.content || []).map((item: any) => ({
-                key: item.agentApiId,
-                name: item.agentApiName,
-                description: item.description,
-                agentApiId: item.agentApiId,
-              }));
+              const responseData = res as { data?: { content?: unknown[] } };
+              const items = (responseData.data?.content || []).map((item: unknown) => {
+                const it = item as Record<string, string>;
+                return {
+                  agentApiId: it.agentApiId,
+                  description: it.description,
+                  key: it.agentApiId || '',
+                  name: it.agentApiName || '',
+                };
+              });
               setServices(items);
-              loadedCount = items.length;
             }
             break;
           case 'MODEL_API':
-            res = await gatewayApi.getGatewayModelApis(values.gatewayId, { page: 0, size: pageSize });
+            res = await gatewayApi.getGatewayModelApis(values.gatewayId, {
+              page: 0,
+              size: pageSize,
+            });
             {
-              const items = (res.data?.content || []).map((item: any) => ({
-                key: item.modelApiId,
-                name: item.modelApiName || item.name,
-                description: item.description,
-                modelApiId: item.modelApiId,
-              }));
+              const responseData = res as { data?: { content?: unknown[] } };
+              const items = (responseData.data?.content || []).map((item: unknown) => {
+                const it = item as Record<string, string>;
+                return {
+                  description: it.description,
+                  key: it.modelApiId || '',
+                  modelApiId: it.modelApiId,
+                  name: it.modelApiName || it.name || '',
+                };
+              });
               setServices(items);
-              loadedCount = items.length;
             }
             break;
           default:
@@ -274,15 +307,18 @@ export default function ImportProductsModal({
             size: pageSize,
           });
           {
-            const items = (res.data?.content || []).map((item: any) => ({
-              key: item.mcpServerName,
-              name: item.mcpServerName,
-              description: item.description,
-              mcpServerName: item.mcpServerName,
-              namespaceId: values.namespaceId,
-            }));
+            const responseData = res as { data?: { content?: unknown[] } };
+            const items = (responseData.data?.content || []).map((item: unknown) => {
+              const it = item as Record<string, string>;
+              return {
+                description: it.description,
+                key: it.mcpServerName || '',
+                mcpServerName: it.mcpServerName,
+                name: it.mcpServerName || '',
+                namespaceId: values.namespaceId,
+              };
+            });
             setServices(items);
-            loadedCount = items.length;
           }
         } else if (productType === 'AGENT_API') {
           res = await nacosApi.getNacosAgents(values.nacosId, {
@@ -291,27 +327,27 @@ export default function ImportProductsModal({
             size: pageSize,
           });
           {
-            const items = (res.data?.content || []).map((item: any) => ({
-              key: item.agentName,
-              name: item.agentName,
-              description: item.description,
-              agentName: item.agentName,
-              namespaceId: values.namespaceId,
-            }));
+            const responseData = res as { data?: { content?: unknown[] } };
+            const items = (responseData.data?.content || []).map((item: unknown) => {
+              const it = item as Record<string, string>;
+              return {
+                agentName: it.agentName,
+                description: it.description,
+                key: it.agentName || '',
+                name: it.agentName || '',
+                namespaceId: values.namespaceId,
+              };
+            });
             setServices(items);
-            loadedCount = items.length;
           }
         }
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '获取服务列表失败');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      message.error(err.response?.data?.message || '获取服务列表失败');
       setServices([]);
     } finally {
       setServicesLoading(false);
-      // 如果达到上限，提示用户
-      if (loadedCount >= pageSize) {
-        message.info(`已加载 ${pageSize} 个服务，如有更多服务请使用搜索或分页功能`);
-      }
     }
   };
 
@@ -322,7 +358,11 @@ export default function ImportProductsModal({
       fetchGateways();
       fetchNacosInstances();
       // 根据产品类型设置默认数据源类型
-      const defaultSourceType = supportsHigress ? 'HIGRESS' : supportsAIGateway ? 'AI_GATEWAY' : 'NACOS';
+      const defaultSourceType = supportsHigress
+        ? 'HIGRESS'
+        : supportsAIGateway
+          ? 'AI_GATEWAY'
+          : 'NACOS';
       setSourceType(defaultSourceType);
       form.setFieldValue('sourceType', defaultSourceType);
     }
@@ -361,38 +401,38 @@ export default function ImportProductsModal({
       }
 
       const values = form.getFieldsValue();
-      const selectedServices = services.filter(s => selectedServiceKeys.includes(s.key));
+      const selectedServices = services.filter((s) => selectedServiceKeys.includes(s.key));
 
       setLoading(true);
       const res = await apiProductApi.importProducts({
-        productType,
-        sourceType: sourceType === 'NACOS' ? 'NACOS' : 'GATEWAY',
         gatewayId: isGatewaySource ? values.gatewayId : undefined,
         nacosId: sourceType === 'NACOS' ? values.nacosId : undefined,
         namespaceId: sourceType === 'NACOS' ? values.namespaceId : undefined,
-        services: selectedServices.map(s => ({
-          name: s.name,
-          description: s.description,
-          apiId: s.apiId,
-          mcpServerId: s.mcpServerId,
-          mcpRouteId: s.mcpRouteId,
+        productType,
+        services: selectedServices.map((s) => ({
           agentApiId: s.agentApiId,
-          modelApiId: s.modelApiId,
-          mcpServerName: s.mcpServerName,
           agentName: s.agentName,
+          apiId: s.apiId,
+          description: s.description,
+          mcpRouteId: s.mcpRouteId,
+          mcpServerId: s.mcpServerId,
+          mcpServerName: s.mcpServerName,
+          modelApiId: s.modelApiId,
+          name: s.name,
           namespaceId: s.namespaceId,
         })),
+        sourceType: sourceType === 'NACOS' ? 'NACOS' : 'GATEWAY',
       });
 
       const result = res.data;
 
       // 如果有失败的，显示详细信息
       if (result.failureCount > 0) {
-        const failedResults = result.results.filter((r: any) => !r.success);
+        const failedResults = (result.results as unknown[]).filter(
+          (r: unknown) => !(r as { success?: boolean }).success,
+        );
 
         Modal.error({
-          title: `导入完成：成功 ${result.successCount} 个，失败 ${result.failureCount} 个`,
-          width: 600,
           content: (
             <div className="mt-4">
               <div className="mb-2 text-gray-600">
@@ -400,19 +440,28 @@ export default function ImportProductsModal({
               </div>
               <div className="font-semibold mb-2">失败详情：</div>
               <div className="max-h-96 overflow-y-auto">
-                {failedResults.map((item: any, index: number) => (
-                  <div key={index} className="mb-3 p-2 bg-red-50 rounded border border-red-200">
-                    <div className="font-medium text-red-700">{item.serviceName}</div>
-                    <div className="text-sm text-red-600 mt-1">
-                      {item.errorCode && <span className="font-mono">[{item.errorCode}] </span>}
-                      {item.errorMessage || '未知错误'}
+                {failedResults.map((item: unknown, index: number) => {
+                  const it = item as {
+                    serviceName?: string;
+                    errorCode?: string;
+                    errorMessage?: string;
+                  };
+                  return (
+                    <div className="mb-3 p-2 bg-red-50 rounded border border-red-200" key={index}>
+                      <div className="font-medium text-red-700">{it.serviceName}</div>
+                      <div className="text-sm text-red-600 mt-1">
+                        {it.errorCode && <span className="font-mono">[{it.errorCode}] </span>}
+                        {it.errorMessage || '未知错误'}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ),
           okText: '知道了',
+          title: `导入完成：成功 ${result.successCount} 个，失败 ${result.failureCount} 个`,
+          width: 600,
         });
 
         // 如果有部分成功，刷新列表
@@ -427,8 +476,9 @@ export default function ImportProductsModal({
       } else {
         message.warning('没有成功导入任何产品');
       }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '导入失败');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      message.error(err.response?.data?.message || '导入失败');
     } finally {
       setLoading(false);
     }
@@ -436,15 +486,15 @@ export default function ImportProductsModal({
 
   const columns: TableColumnsType<ServiceItem> = [
     {
-      title: '服务名称',
       dataIndex: 'name',
       key: 'name',
+      title: '服务名称',
     },
     {
-      title: '描述',
       dataIndex: 'description',
       key: 'description',
       render: (text) => text || '-',
+      title: '描述',
     },
   ];
 
@@ -455,37 +505,38 @@ export default function ImportProductsModal({
 
   return (
     <Modal
-      title={`导入 ${PRODUCT_TYPE_LABELS[productType]}`}
-      open={visible}
+      cancelText="取消"
+      confirmLoading={loading}
+      destroyOnClose
+      okText="导入"
       onCancel={handleCancel}
       onOk={handleImport}
-      confirmLoading={loading}
+      open={visible}
+      title={`导入 ${PRODUCT_TYPE_LABELS[productType]}`}
       width={800}
-      okText="导入"
-      cancelText="取消"
-      destroyOnClose
     >
-      <Form form={form} layout="vertical" className="mt-4">
+      <Form className="mt-4" form={form} layout="vertical">
         <Form.Item
+          initialValue={sourceType}
           label="数据源类型"
           name="sourceType"
-          initialValue={sourceType}
-          rules={[{ required: true, message: '请选择数据源类型' }]}
+          rules={[{ message: '请选择数据源类型', required: true }]}
         >
-          <Select
-            placeholder="请选择数据源类型"
-            onChange={handleSourceTypeChange}
-          >
-            <Select.Option value="HIGRESS" disabled={!supportsHigress}>
+          <Select onChange={handleSourceTypeChange} placeholder="请选择数据源类型">
+            <Select.Option disabled={!supportsHigress} value="HIGRESS">
               {SOURCE_TYPE_LABELS.HIGRESS}
-              {higressDisabledReason && <span className="text-gray-400 text-xs ml-1">（{higressDisabledReason}）</span>}
+              {higressDisabledReason && (
+                <span className="text-gray-400 text-xs ml-1">（{higressDisabledReason}）</span>
+              )}
             </Select.Option>
             {supportsAIGateway && (
               <Select.Option value="AI_GATEWAY">{SOURCE_TYPE_LABELS.AI_GATEWAY}</Select.Option>
             )}
-            <Select.Option value="NACOS" disabled={!!nacosDisabledReason}>
+            <Select.Option disabled={!!nacosDisabledReason} value="NACOS">
               {SOURCE_TYPE_LABELS.NACOS}
-              {nacosDisabledReason && <span className="text-gray-400 text-xs ml-1">（{nacosDisabledReason}）</span>}
+              {nacosDisabledReason && (
+                <span className="text-gray-400 text-xs ml-1">（{nacosDisabledReason}）</span>
+              )}
             </Select.Option>
           </Select>
         </Form.Item>
@@ -494,13 +545,13 @@ export default function ImportProductsModal({
           <Form.Item
             label="选择 Higress 实例"
             name="gatewayId"
-            rules={[{ required: true, message: '请选择 Higress 实例' }]}
+            rules={[{ message: '请选择 Higress 实例', required: true }]}
           >
             <Select
-              placeholder="请选择 Higress 实例"
               onChange={fetchServices}
-              showSearch
               optionFilterProp="children"
+              placeholder="请选择 Higress 实例"
+              showSearch
             >
               {higressGateways.map((gw) => (
                 <Select.Option key={gw.gatewayId} value={gw.gatewayId}>
@@ -515,13 +566,13 @@ export default function ImportProductsModal({
           <Form.Item
             label="选择 AI 网关实例"
             name="gatewayId"
-            rules={[{ required: true, message: '请选择 AI 网关实例' }]}
+            rules={[{ message: '请选择 AI 网关实例', required: true }]}
           >
             <Select
-              placeholder="请选择 AI 网关实例"
               onChange={fetchServices}
-              showSearch
               optionFilterProp="children"
+              placeholder="请选择 AI 网关实例"
+              showSearch
             >
               {aiGateways.map((gw) => (
                 <Select.Option key={gw.gatewayId} value={gw.gatewayId}>
@@ -537,14 +588,18 @@ export default function ImportProductsModal({
             <Form.Item
               label="选择 Nacos 实例"
               name="nacosId"
-              rules={[{ required: true, message: '请选择 Nacos 实例' }]}
+              rules={[{ message: '请选择 Nacos 实例', required: true }]}
             >
               <Select
-                placeholder={nacosInstances.length === 0 ? "暂无 Nacos 实例，请先在系统中添加" : "请选择 Nacos 实例"}
-                onChange={handleNacosChange}
-                showSearch
-                optionFilterProp="children"
                 notFoundContent="暂无 Nacos 实例"
+                onChange={handleNacosChange}
+                optionFilterProp="children"
+                placeholder={
+                  nacosInstances.length === 0
+                    ? '暂无 Nacos 实例，请先在系统中添加'
+                    : '请选择 Nacos 实例'
+                }
+                showSearch
               >
                 {nacosInstances.map((nacos) => (
                   <Select.Option key={nacos.nacosId} value={nacos.nacosId}>
@@ -557,19 +612,22 @@ export default function ImportProductsModal({
             <Form.Item
               label="选择命名空间"
               name="namespaceId"
-              rules={[{ required: true, message: '请选择命名空间' }]}
+              rules={[{ message: '请选择命名空间', required: true }]}
             >
               <Select
-                placeholder="请选择命名空间"
                 onChange={fetchServices}
-                showSearch
                 optionFilterProp="children"
+                placeholder="请选择命名空间"
+                showSearch
               >
-                {namespaces.map((ns: any) => (
-                  <Select.Option key={ns.namespaceId} value={ns.namespaceId}>
-                    {ns.namespaceName || ns.namespaceId}
-                  </Select.Option>
-                ))}
+                {namespaces.map((ns: unknown) => {
+                  const n = ns as { namespaceId: string; namespaceName?: string };
+                  return (
+                    <Select.Option key={n.namespaceId} value={n.namespaceId}>
+                      {n.namespaceName || n.namespaceId}
+                    </Select.Option>
+                  );
+                })}
               </Select>
             </Form.Item>
           </>
@@ -581,39 +639,36 @@ export default function ImportProductsModal({
           <span className="font-medium">可用服务列表</span>
           <Space>
             <Input
+              allowClear
+              onChange={(e) => setSearchText(e.target.value)}
               placeholder="搜索服务名称或描述"
               prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
               style={{ width: 200 }}
-              allowClear
+              value={searchText}
             />
-            <Button size="small" onClick={handleSelectAll}>
+            <Button onClick={handleSelectAll} size="small">
               全选
             </Button>
-            <Button size="small" onClick={handleDeselectAll}>
+            <Button onClick={handleDeselectAll} size="small">
               清空
             </Button>
             <span className="text-sm text-gray-500">
               已选择 {selectedServiceKeys.length} / {filteredServices.length}
-              {searchText && services.length !== filteredServices.length && ` (共 ${services.length} 个)`}
+              {searchText &&
+                services.length !== filteredServices.length &&
+                ` (共 ${services.length} 个)`}
             </span>
           </Space>
         </div>
         <Table
-          rowSelection={{
-            selectedRowKeys: selectedServiceKeys,
-            onChange: (keys) => setSelectedServiceKeys(keys as string[]),
-          }}
           columns={columns}
           dataSource={filteredServices}
           loading={servicesLoading}
+          locale={{
+            emptyText: searchText ? '没有匹配的服务' : '暂无可导入的服务，请先选择数据源',
+          }}
           pagination={{
             current: currentPage,
-            pageSize: tablePageSize,
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 个服务`,
-            pageSizeOptions: ['3', '20', '50', '100'],
             onChange: (page, newPageSize) => {
               // 如果 pageSize 改变了，重置到第一页
               if (newPageSize !== tablePageSize) {
@@ -623,11 +678,16 @@ export default function ImportProductsModal({
                 setCurrentPage(page);
               }
             },
+            pageSize: tablePageSize,
+            pageSizeOptions: ['3', '20', '50', '100'],
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 个服务`,
+          }}
+          rowSelection={{
+            onChange: (keys) => setSelectedServiceKeys(keys as string[]),
+            selectedRowKeys: selectedServiceKeys,
           }}
           scroll={{ y: 300 }}
-          locale={{
-            emptyText: searchText ? '没有匹配的服务' : '暂无可导入的服务，请先选择数据源',
-          }}
         />
       </div>
     </Modal>
